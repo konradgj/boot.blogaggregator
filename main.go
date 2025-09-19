@@ -8,6 +8,10 @@ import (
 	"github.com/konradgj/boot.blogaggregator/internal/config"
 )
 
+type state struct {
+	cfg *config.Config
+}
+
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -15,16 +19,32 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = cfg.SetUser("lane")
-	if err != nil {
-		log.Println(err)
+	st := state{
+		cfg: &cfg,
+	}
+	cmds := commands{
+		registeredCmds: map[string]func(*state, command) error{},
+	}
+
+	cmds.register("login", handlerLogin)
+
+	args := os.Args
+	if len(args) == 1 {
+		fmt.Println("expected a command: <command>")
+		os.Exit(1)
+	}
+	if len(args) < 2 {
+		fmt.Println("username required: login <name>")
 		os.Exit(1)
 	}
 
-	cfg, err = config.LoadConfig()
+	cmd := command{
+		name: args[1],
+		args: args[2:],
+	}
+	err = cmds.run(&st, cmd)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println(cfg)
 }
