@@ -9,16 +9,11 @@ import (
 	"github.com/konradgj/boot.blogaggregator/internal/database"
 )
 
-func handlerAddFeedFollow(state *state, cmd command) error {
+func handlerAddFeedFollow(state *state, cmd command, user database.User) error {
 	if len(cmd.args) != 1 {
 		return fmt.Errorf("expected one argument: follow <url>")
 	}
 	url := cmd.args[0]
-
-	user, err := state.db.GetUser(context.Background(), state.cfg.CurrentUserName)
-	if err != nil {
-		return err
-	}
 
 	feed, err := state.db.GetFeed(context.Background(), url)
 	if err != nil {
@@ -34,14 +29,9 @@ func handlerAddFeedFollow(state *state, cmd command) error {
 	return nil
 }
 
-func handlerGetFeedFollowsForUser(state *state, cmd command) error {
+func handlerGetFeedFollowsForUser(state *state, cmd command, user database.User) error {
 	if len(cmd.args) != 0 {
 		return fmt.Errorf("expected no arguments: following")
-	}
-
-	user, err := state.db.GetUser(context.Background(), state.cfg.CurrentUserName)
-	if err != nil {
-		return err
 	}
 
 	feedFollows, err := state.db.GetFeedFollowForUser(context.Background(), user.ID)

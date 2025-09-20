@@ -9,14 +9,9 @@ import (
 	"github.com/konradgj/boot.blogaggregator/internal/database"
 )
 
-func handlerAddFeed(state *state, cmd command) error {
+func handlerAddFeed(state *state, cmd command, user database.User) error {
 	if len(cmd.args) != 2 {
 		return fmt.Errorf("expected two arguments: register <name> <url>")
-	}
-
-	user, err := state.db.GetUser(context.Background(), state.cfg.CurrentUserName)
-	if err != nil {
-		return err
 	}
 
 	feed, err := state.db.CreateFeed(
