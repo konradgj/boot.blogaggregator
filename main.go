@@ -42,24 +42,20 @@ func main() {
 	cmds.register("register", handlerRegister)
 	cmds.register("reset", handlerResetUsers)
 	cmds.register("users", handlerGetUsers)
+	cmds.register("agg", handlerAgg)
 
 	args := os.Args
-	if len(args) == 1 {
-		fmt.Println("expected a command: <command>")
-		os.Exit(1)
-	}
 	if len(args) < 2 {
-		fmt.Println("expected argument: command <arg>")
+		fmt.Println("Usage: cli <command> [args...]")
 		os.Exit(1)
 	}
-
 	cmd := command{
 		name: args[1],
 		args: args[2:],
 	}
+
 	err = cmds.run(&st, cmd)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
