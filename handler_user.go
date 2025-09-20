@@ -65,3 +65,13 @@ func handlerRegister(state *state, cmd command) error {
 
 	return nil
 }
+
+func handlerResetUser(state *state, _ command) error {
+	err := state.db.ResetUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("error truncating users table: %w", err)
+	}
+
+	fmt.Println("Successfully reset users table")
+	return nil
+}
