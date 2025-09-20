@@ -68,14 +68,19 @@ func (q *Queries) CreateFeedFollow(ctx context.Context, arg CreateFeedFollowPara
 	return i, err
 }
 
-const getFeedFollow = `-- name: GetFeedFollow :one
-SELECT id, created_at, updated_at, feed_id, user_id
-FROM feed_follows
-WHERE id = $1
+const deleteFeedFollow = `-- name: DeleteFeedFollow :one
+DELETE FROM feed_follows
+WHERE feed_id = $1 AND user_id = $2
+RETURNING id, created_at, updated_at, feed_id, user_id
 `
 
-func (q *Queries) GetFeedFollow(ctx context.Context, id uuid.UUID) (FeedFollow, error) {
-	row := q.db.QueryRowContext(ctx, getFeedFollow, id)
+type DeleteFeedFollowParams struct {
+	FeedID uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) DeleteFeedFollow(ctx context.Context, arg DeleteFeedFollowParams) (FeedFollow, error) {
+	row := q.db.QueryRowContext(ctx, deleteFeedFollow, arg.FeedID, arg.UserID)
 	var i FeedFollow
 	err := row.Scan(
 		&i.ID,
@@ -93,12 +98,9 @@ SELECT
   feeds.name as feed_name,
   users.name as user_name
 FROM feed_follows
-INNER JOIN feeds
-  ON feed_follows.feed_id = feeds.id
-INNER JOIN users
-  ON feed_follows.user_id = users.id
-WHERE
-  feed_follows.user_id = $1
+INNER JOIN feeds ON feed_follows.feed_id = feeds.id
+INNER JOIN users ON feed_follows.user_id = users.id
+WHERE feed_follows.user_id = $1
 `
 
 type GetFeedFollowForUserRow struct {
