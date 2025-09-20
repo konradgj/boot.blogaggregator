@@ -66,7 +66,29 @@ func handlerRegister(state *state, cmd command) error {
 	return nil
 }
 
-func handlerResetUser(state *state, _ command) error {
+func handlerGetUsers(state *state, cmd command) error {
+	users, err := state.db.GetUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("error fetching users: %w", err)
+	}
+
+	if len(users) == 0 {
+		fmt.Println("No users in database")
+		return nil
+	}
+
+	for _, user := range users {
+		if user.Name == state.cfg.CurrentUserName {
+			fmt.Printf(" * %s (current)\n", user.Name)
+			continue
+		}
+		fmt.Printf(" * %s\n", user.Name)
+	}
+
+	return nil
+}
+
+func handlerResetUsers(state *state, _ command) error {
 	err := state.db.ResetUsers(context.Background())
 	if err != nil {
 		return fmt.Errorf("error truncating users table: %w", err)

@@ -40,7 +40,8 @@ func main() {
 
 	cmds.register("login", handlerLogin)
 	cmds.register("register", handlerRegister)
-	cmds.register("reset", handlerResetUser)
+	cmds.register("reset", handlerResetUsers)
+	cmds.register("users", handlerGetUsers)
 
 	args := os.Args
 	if len(args) == 1 {
