@@ -52,7 +52,7 @@ func (cfg *Config) SetUser(name string) error {
 
 	err := cfg.write()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not set current user %s: %w", name, err)
 	}
 
 	return nil
