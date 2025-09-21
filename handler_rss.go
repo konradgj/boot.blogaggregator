@@ -2,12 +2,48 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/konradgj/boot.blogaggregator/internal/database"
+	"github.com/lib/pq"
 )
+
+func handlerBrowse(state *state, cmd command, user database.User) error {
+	if len(cmd.args) > 1 {
+		return fmt.Errorf("expected one or no arguments: browse <amount>(optional)")
+	}
+	limit := 2
+	if len(cmd.args) == 1 {
+		l, err := strconv.Atoi(cmd.args[0])
+		if err != nil {
+			return fmt.Errorf("invalid limit: %w", err)
+		}
+		limit = l
+	}
+
+	posts, err := state.db.GetPostsForUser(
+		context.Background(),
+		database.GetPostsForUserParams{
+			UserID: user.ID,
+			Limit:  int32(limit),
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("error fetching posts: %w", err)
+	}
+
+	for _, post := range posts {
+		printPost(post)
+	}
+
+	return nil
+}
 
 func handlerAgg(state *state, cmd command) error {
 	if len(cmd.args) != 1 {
@@ -53,10 +89,85 @@ func scrapeFeed(state *state) error {
 		return fmt.Errorf("could not mark feed as fetched: %w", err)
 	}
 
-	fmt.Println("Found the following items:")
+	now := time.Now().UTC()
+
 	for _, rssItem := range rssFeed.Channel.Item {
-		fmt.Printf("- %s\n", rssItem.Title)
+		pubDate, err := parseXmlDate(rssItem.PubDate)
+		if err != nil {
+			log.Printf("could not parse pubDate for %s: %v", rssItem.Title, err)
+			pubDate = time.Time{}
+		}
+
+		_, err = state.db.CreatePost(
+			context.Background(),
+			database.CreatePostParams{
+				ID:          uuid.New(),
+				CreatedAt:   now,
+				UpdatedAt:   now,
+				Title:       rssItem.Title,
+				Url:         rssItem.Link,
+				Description: wrapNullString(rssItem.Description),
+				PublishedAt: wrapNullTime(pubDate),
+				FeedID:      feedToFetch.ID,
+			},
+		)
+		if err != nil {
+			var pqErr *pq.Error
+			if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+				continue
+			}
+			log.Printf("error creating post for %s: %v", rssItem.Title, err)
+			continue
+		}
 	}
 
 	return nil
+}
+
+func wrapNullString(s string) sql.NullString {
+	return sql.NullString{
+		String: s,
+		Valid:  s != "",
+	}
+}
+
+func wrapNullTime(t time.Time) sql.NullTime {
+	return sql.NullTime{
+		Time:  t,
+		Valid: !t.IsZero(),
+	}
+}
+
+func parseXmlDate(date string) (time.Time, error) {
+	layouts := []string{
+		time.RFC1123Z,
+		time.RFC1123,
+		time.RFC3339,
+	}
+
+	for _, layout := range layouts {
+		if t, err := time.Parse(layout, date); err == nil {
+			return t, nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("could not parse date: %s", date)
+}
+
+func printPost(post database.Post) {
+	fmt.Printf("Title:        %s\n", post.Title)
+	fmt.Printf("URL:          %s\n", post.Url)
+
+	if post.Description.Valid {
+		fmt.Printf("Description:  %s\n", post.Description.String)
+	} else {
+		fmt.Printf("Description:  <NULL>\n")
+	}
+
+	if post.PublishedAt.Valid {
+		fmt.Printf("PublishedAt:  %s\n", post.PublishedAt.Time.Format(time.RFC3339))
+	} else {
+		fmt.Printf("PublishedAt:  <NULL>\n")
+	}
+	fmt.Println("--------------------------------------")
 }
