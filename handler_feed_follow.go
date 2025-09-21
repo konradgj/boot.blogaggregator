@@ -63,7 +63,7 @@ func handlerUnfollow(state *state, cmd command, user database.User) error {
 		return nil
 	}
 
-	_, err = state.db.DeleteFeedFollow(
+	err = state.db.DeleteFeedFollow(
 		context.Background(),
 		database.DeleteFeedFollowParams{
 			FeedID: feed.ID,
